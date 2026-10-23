@@ -15,6 +15,11 @@ type NetworkInterfaceListResponseBody struct {
 	Data []*NetworkInterfaceListResponseData `json:"data,omitempty"`
 }
 
+// NetworkInterfaceResponseBody contains the body from a node network interface response.
+type NetworkInterfaceResponseBody struct {
+	Data *NetworkInterfaceListResponseData `json:"data,omitempty"`
+}
+
 // NetworkInterfaceListResponseData contains the data from a node network interface list response.
 type NetworkInterfaceListResponseData struct {
 	// There seems to be inconsistency in the APIs between certain versions of Proxmox.

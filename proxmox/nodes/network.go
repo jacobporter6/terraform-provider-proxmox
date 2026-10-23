@@ -52,6 +52,34 @@ func (c *Client) ListNetworkInterfaces(ctx context.Context) ([]*NetworkInterface
 	return resBody.Data, nil
 }
 
+// GetNetworkInterface retrieves a specific network interface for a node.
+func (c *Client) GetNetworkInterface(ctx context.Context, iface string) (*NetworkInterfaceListResponseData, error) {
+	resBody := &NetworkInterfaceResponseBody{}
+
+	err := c.DoRequest(
+		ctx,
+		http.MethodGet,
+		c.ExpandPath(fmt.Sprintf("network/%s", url.PathEscape(iface))),
+		nil,
+		resBody,
+	)
+	if err != nil {
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) &&
+			strings.Contains(httpErr.Message, "interface does not exist") {
+			err = errors.Join(api.ErrResourceDoesNotExist, err)
+		}
+
+		return nil, fmt.Errorf("failed to get network interface %q for node %q: %w", iface, c.NodeName, err)
+	}
+
+	if resBody.Data == nil {
+		return nil, api.ErrNoDataObjectInResponse
+	}
+
+	return resBody.Data, nil
+}
+
 // CreateNetworkInterface creates a network interface for a specific node.
 func (c *Client) CreateNetworkInterface(ctx context.Context, d *NetworkInterfaceCreateUpdateRequestBody) error {
 	err := c.DoRequest(ctx, http.MethodPost, c.ExpandPath("network"), d, nil)

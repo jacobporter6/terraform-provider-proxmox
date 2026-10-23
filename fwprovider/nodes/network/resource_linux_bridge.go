@@ -8,6 +8,7 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -33,6 +34,7 @@ import (
 	"github.com/bpg/terraform-provider-proxmox/fwprovider/migration"
 	customtypes "github.com/bpg/terraform-provider-proxmox/fwprovider/types"
 	"github.com/bpg/terraform-provider-proxmox/proxmox"
+	"github.com/bpg/terraform-provider-proxmox/proxmox/api"
 	"github.com/bpg/terraform-provider-proxmox/proxmox/nodes"
 	proxmoxtypes "github.com/bpg/terraform-provider-proxmox/proxmox/types"
 )
@@ -432,35 +434,35 @@ func (r *linuxBridgeResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 func (r *linuxBridgeResource) read(ctx context.Context, model *linuxBridgeResourceModel, diags *diag.Diagnostics) bool {
-	ifaces, err := r.client.Node(model.NodeName.ValueString()).ListNetworkInterfaces(ctx)
+	iface, err := r.client.Node(model.NodeName.ValueString()).GetNetworkInterface(ctx, model.Name.ValueString())
 	if err != nil {
+		if errors.Is(err, api.ErrResourceDoesNotExist) {
+			return false
+		}
+
 		diags.AddError(
-			"Error listing network interfaces",
-			"Could not list network interfaces, unexpected error: "+err.Error(),
+			"Error getting Linux Bridge interface",
+			"Could not get Linux Bridge interface, unexpected error: "+err.Error(),
 		)
 
 		return false
 	}
 
-	for _, iface := range ifaces {
-		if iface.Iface != model.Name.ValueString() {
-			continue
-		}
-
-		err = model.importFromNetworkInterfaceList(ctx, iface)
-		if err != nil {
-			diags.AddError(
-				"Error converting network interface to a model",
-				"Could not import network interface from API response, unexpected error: "+err.Error(),
-			)
-
-			return false
-		}
-
-		return true
+	if iface.Iface != model.Name.ValueString() {
+		return false
 	}
 
-	return false
+	err = model.importFromNetworkInterfaceList(ctx, iface)
+	if err != nil {
+		diags.AddError(
+			"Error converting network interface to a model",
+			"Could not import network interface from API response, unexpected error: "+err.Error(),
+		)
+
+		return false
+	}
+
+	return true
 }
 
 // Read reads a Linux Bridge interface.
