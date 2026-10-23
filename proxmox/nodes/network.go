@@ -76,6 +76,11 @@ func (c *Client) GetNetworkInterface(ctx context.Context, iface string) (*Networ
 	if resBody.Data == nil {
 		return nil, api.ErrNoDataObjectInResponse
 	}
+	// The single-interface endpoint can omit the interface name even though
+	// the requested name is encoded in the URL.
+	if resBody.Data.Iface == "" {
+		resBody.Data.Iface = iface
+	}
 
 	return resBody.Data, nil
 }
